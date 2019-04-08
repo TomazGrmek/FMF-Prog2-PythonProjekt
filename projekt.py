@@ -13,10 +13,13 @@ class DateException(Exception):
 
 
 class Movie:
+    '''Razred za film, hrani vse potrebne podatke o filmu: id, igralci, datum izdaje, igralci, direktor, zaslužek'''
     def __init__(self, title = None, movie_id = None):
         if title is not None:
             movie = requests.get("http://www.omdbapi.com/?t="+title+"&apikey=2ab2d5e2").json()
             self.imdbid = movie["imdbID"]
+
+            # za vhodni film potrebujemo tudi imdbidje igralcev in direktorjev, dobimo jih z strani filma
             m = re.search(r'<script type="application/ld\+json">([^<]+)</script>',
                           requests.get("https://www.imdb.com/title/" + self.imdbid + "/").text, re.S)
             res = json.loads(m.group(1))
@@ -43,7 +46,7 @@ class Movie:
             raise Exception(movie["Error"])
 
 
-        if movie["Released"] != "N/A":
+        if movie["Released"] != "N/A": #datum spremenimo v format YYYY-MM-DD
             self.releasedate = movie["Released"].split(" ")[::-1]
             self.releasedate[1] = months[self.releasedate[1]]
             self.releasedate = "-".join(map(str,self.releasedate))
@@ -59,10 +62,12 @@ class Movie:
         if movie["BoxOffice"] == "N/A":
             self.boxoffice = 0
         else:
-            self.boxoffice = ''.join(d for d in movie["BoxOffice"] if d.isdigit())
+            self.boxoffice = ''.join(d for d in movie["BoxOffice"] if d.isdigit()) #zaslužek spremenimo v številko
         
 
     def weight(self, movie):
+        '''utež, kako podoben je nek film z podanim, izemrimo z tem, koliko enakih igralcev imata in razliko
+        med letnicama izdaje filmov'''
         st = len(set(movie.cast_names) & set(self.cast_names))
         if self.releasedate is not None and movie.releasedate is not None:
             year_diff = int(movie.releasedate.split("-")[0]) - int(self.releasedate.split("-")[0])
@@ -78,10 +83,10 @@ m = Movie(title)
 
 movie_ids = set()
 combi = []
-for i in range(1, len(m.actors+m.directors)+1):
+for i in range(1, len(m.actors+m.directors)+1): #dobimo vse možne kombinacije direktorjev in igralcev
     combi.extend(list(itertools.combinations(m.actors+m.directors, i)))
 
-for el in reversed(combi):
+for el in reversed(combi): #za vsako kombinacijo izvedemo search in dodamo najdene filme v množico
     if len(movie_ids) >= 100:
         break
     search = requests.get("https://www.imdb.com/search/title?title_type=feature,tv_movie&release_date=,"+str(m.releasedate)+"&genres="+ (",".join(m.genres)) + "&role="+ (",".join(el))+"&count=100").text
@@ -95,7 +100,7 @@ if m.imdbid in movie_ids:
 
 st = 0
 im = 1
-for el in movie_ids:
+for el in movie_ids: # za vsak najden film izračunamo utež inzaslužek dodamo k vsoti
     try:
         movie_el = Movie(movie_id = el)
         weig = float(movie_el.weight(m))
