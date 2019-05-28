@@ -3,17 +3,24 @@ package prog2;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.ButtonGroup;
 import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JRadioButtonMenuItem;
 
 import prog2.Game.Food;
 import prog2.Game.Snake;
@@ -24,20 +31,47 @@ public class Game {
 	private static final int WIDTH_GRID = WIDTH/20-1;
 	private static final int HEIGHT_GRID = HEIGHT/20-1;
 	private GUI GUI;
+	static boolean paused = false;
+	static int score = 0;
 
 	public static void main(String[] args) {
 		Snake snake = new Snake();
 		Food food = new Food(snake);
-		GUI frame = new GUI(snake, food);
+		GUI frame = new GUI(snake, food, score);
 		boolean eat = false;
 		boolean eat2 = false;
 		int check;
 		
+		frame.pack();
 		frame.setVisible(true);
 
 		
 		while(true) {
 			
+			if(paused) {
+				try {
+					frame.addKeyListener(new KeyAdapter() {
+
+						@Override
+						public void keyPressed(KeyEvent e) {
+							int key = e.getKeyCode();
+							
+				            if (key == KeyEvent.VK_SPACE) {
+				            	paused = false;
+				            }
+				           
+				            
+						}
+					});
+					if(paused) {
+						Thread.sleep(1000);
+					}
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					}
+			}
+			else {
 			
 			
 			frame.addKeyListener(new KeyAdapter() {
@@ -61,7 +95,10 @@ public class Game {
 		            if ((key == KeyEvent.VK_DOWN) && (snake.getDirection() != 3)) {
 		            	snake.setDirection(1);
 		            }
-					
+		            if ( key == KeyEvent.VK_SPACE ) {
+		            	paused = true;
+		            }
+		            
 				}
 
 			      
@@ -73,10 +110,12 @@ public class Game {
 			else if (check == 2) {
 				eat = true;
 				eat2 = false;
+				score += 1;
 			}
 			else if (check == 3) {
 				eat2 = true;
 				eat = false;
+				score += 2;
 			}
 			else {
 				eat = false;
@@ -88,6 +127,7 @@ public class Game {
 			if(food.numElementsDouble() == 0) {
 				food.addElementsDouble(snake);
 			}
+			frame.top.setScore(score);
 			snake.move(eat,eat2);
 			frame.repaint();
 			
@@ -95,12 +135,13 @@ public class Game {
 			
 			
 			try {
-				Thread.sleep(175);
+				Thread.sleep(frame.getSpeed());
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
+			}
 
 	}
 	
@@ -259,10 +300,12 @@ class GUI extends JFrame {
 	  
 	  
 	  private static final long serialVersionUID = 1L;
+	  TopPanel top;
+	  JMenuBar menuBar;
+	  private int speed = 170;
 	  
-	  private Snake snake;
 
-	  public GUI(Snake snake, Food food) {
+	  public GUI(Snake snake, Food food, int score) {
 	    super();
 	    
 	    
@@ -273,10 +316,58 @@ class GUI extends JFrame {
 	    setResizable(false);
 	    setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	    
+	    top = new TopPanel(score);
 	    add(new Panel(snake, food), BorderLayout.CENTER);
+	    add(top , BorderLayout.NORTH);
+	    
+	    menuBar = new JMenuBar();
+	    
+	    JMenu menu = new JMenu("Zahtevnost");
+	    ButtonGroup group = new ButtonGroup();
+	    JRadioButtonMenuItem rbMenuItem = new JRadioButtonMenuItem("Lahka");
+	    rbMenuItem.addActionListener(new ActionListener() {
+	        
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	          speed = 250;
+	        }
+	        
+	    });
+	    group.add(rbMenuItem);
+	    menu.add(rbMenuItem);
+	    rbMenuItem = new JRadioButtonMenuItem("Normalna");
+	    rbMenuItem.setSelected(true);
+	    rbMenuItem.addActionListener(new ActionListener() {
+	        
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	          speed = 170;
+	        }
+	        
+	    });
+	    group.add(rbMenuItem);
+	    menu.add(rbMenuItem);
+	    rbMenuItem = new JRadioButtonMenuItem("Težka");
+	    rbMenuItem.addActionListener(new ActionListener() {
+	        
+	        @Override
+	        public void actionPerformed(ActionEvent e) {
+	          speed = 110;
+	        }
+	        
+	    });
+	    group.add(rbMenuItem);
+	    menu.add(rbMenuItem);
+	    menuBar.add(menu);
+	    
+	    setJMenuBar(menuBar);
 	    
 
 	}
+	
+	  public int getSpeed() {
+		  return speed;
+	  }
 
 }
 
@@ -311,7 +402,7 @@ class Panel extends JPanel{
 			
 			graphics.fillRect((int)Math.round(el.getX()*w)  , (int)Math.round(el.getY()*h), (int)Math.round(w), (int)Math.round(h));
 			graphics.setColor(Color.BLACK);
-			graphics.fillRect((int)Math.round(el.getX()*w)  , (int)Math.round(el.getY()*h), (int)Math.round(w)-5, (int)Math.round(h)-5);
+			graphics.fillRect((int)Math.round(el.getX()*w) + 2  , (int)Math.round(el.getY()*h) + 2, (int)Math.round(w)-5, (int)Math.round(h)-5);
 		}
 		for (int i = 0; i < food.coordinates.size(); i++) {
 			Point el = food.coordinates.get(i);
@@ -324,6 +415,33 @@ class Panel extends JPanel{
 			graphics.fillRect((int)Math.round(el.getX()*w)  , (int)Math.round(el.getY()*h), (int)Math.round(w), (int)Math.round(h));
 		}
 		
+	}
+}
+
+class TopPanel extends JPanel{
+	private static final long serialVersionUID = 1L;
+	private int score;
+	
+	public TopPanel(int score) {
+		super();
+		this.score = score;
+		setBackground(Color.BLACK);
+	}
+	public void setScore(int score) {
+		this.score = score;
+	}
+	@Override
+	public Dimension getPreferredSize() {
+		return new Dimension(800,40);
+	}
+	@Override
+	public void paint(Graphics g) {
+		super.paint(g);
+		int w = getWidth() / 2;
+		int h = getHeight() / 2;
+		g.setColor(Color.WHITE);
+		g.setFont(new Font("Calibri", Font.BOLD, 25));
+		g.drawString(""+ score, w, h+5);
 	}
 }
 	  
